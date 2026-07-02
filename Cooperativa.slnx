@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Api/">
+    <Project Path="src/Api/Cooperativa.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Contratos/">
+    <Project Path="src/Contratos/Cooperativa.Contratos.csproj" />
+  </Folder>
+  <Folder Name="/src/Helper/">
+    <Project Path="src/Helper/Cooperativa.Helper.csproj" />
+  </Folder>
+  <Folder Name="/src/Web/">
+    <Project Path="src/Web/Cooperativa.Web.csproj" />
+  </Folder>
+  <Folder Name="/testes/" />
+  <Folder Name="/testes/Xunit/">
+    <Project Path="testes/Xunit/Cooperativa.Testes.csproj" />
+  </Folder>
+</Solution>
