@@ -1,0 +1,43 @@
+{
+  "versao": 1,
+  "cliente": {
+    "operacao": {
+      "tipo": "texto",
+      "tamanho": 10,
+      "valores": [
+        "CONSULTAR",
+        "CADASTRAR",
+        "ATUALIZAR"
+      ]
+    },
+    "codigo": {
+      "tipo": "texto",
+      "tamanho": 6,
+      "geradoPeloSistema": true
+    },
+    "nome": {
+      "tipo": "texto",
+      "tamanho": 30,
+      "obrigatorioNoCadastro": true
+    },
+    "email": {
+      "tipo": "texto",
+      "tamanho": 60,
+      "obrigatorioNoCadastro": true,
+      "unico": true
+    },
+    "telefone": {
+      "tipo": "texto",
+      "tamanho": 11,
+      "obrigatorioNoCadastro": false
+    },
+    "retorno": {
+      "tipo": "texto",
+      "tamanho": 4
+    },
+    "mensagem": {
+      "tipo": "texto",
+      "tamanho": 60
+    }
+  }
+}
