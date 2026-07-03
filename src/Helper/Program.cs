@@ -1,7 +1,7 @@
 ﻿using Cooperativa.Helper;
 
 var comando = LeitorComando.Ler(args);
-var servico = new ClienteMemoriaServico();
+var servico = CriarServico();
 
 var resposta = comando.Operacao switch
 {
@@ -14,3 +14,17 @@ var resposta = comando.Operacao switch
 Console.WriteLine(resposta.FormatarLinha());
 
 return resposta.Sucesso ? 0 : 1;
+
+static IClienteServico CriarServico()
+{
+    var usarDb2 = Environment.GetEnvironmentVariable("HELPER_USAR_DB2");
+    var connectionString = Environment.GetEnvironmentVariable("DB2_CONNECTION_STRING");
+
+    if (string.Equals(usarDb2, "true", StringComparison.OrdinalIgnoreCase) &&
+        !string.IsNullOrWhiteSpace(connectionString))
+    {
+        return new ClienteDb2Servico(connectionString);
+    }
+
+    return new ClienteMemoriaServico();
+}

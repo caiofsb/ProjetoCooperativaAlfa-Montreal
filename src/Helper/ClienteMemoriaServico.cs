@@ -2,7 +2,7 @@ using Cooperativa.Contratos;
 
 namespace Cooperativa.Helper;
 
-public sealed class ClienteMemoriaServico
+public sealed class ClienteMemoriaServico : IClienteServico
 {
     private readonly List<Cliente> clientes =
     [
