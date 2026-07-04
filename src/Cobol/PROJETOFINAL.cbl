@@ -5,23 +5,30 @@
        ENVIRONMENT DIVISION.
        CONFIGURATION SECTION.
 
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT ARQ-ENT ASSIGN TO "runtime/entrada.txt"
+               ORGANIZATION IS LINE SEQUENTIAL.
+
+           SELECT ARQ-SAI ASSIGN TO "runtime/saida.txt"
+               ORGANIZATION IS LINE SEQUENTIAL.
+
        DATA DIVISION.
+       FILE SECTION.
+
+       FD  ARQ-ENT.
+       01  REG-ENT              PIC X(117).
+
+       FD  ARQ-SAI.
+       01  REG-SAI              PIC X(188).
+
        WORKING-STORAGE SECTION.
 
-       01  WKR-FIM              PIC X VALUE 'N'.
        01  WKR-VALIDO           PIC X VALUE 'S'.
        01  WKR-I                PIC 9(03) VALUE 0.
        01  WKR-QTD-ARROBA       PIC 9(02) VALUE 0.
        01  WKR-TEM-PONTO        PIC X VALUE 'N'.
        01  WKR-CHAR             PIC X.
-
-       01  WKR-OPERACAO         PIC X(10).
-       01  WKR-CODIGO           PIC X(06).
-       01  WKR-NOME             PIC X(30).
-       01  WKR-EMAIL            PIC X(60).
-       01  WKR-TELEFONE         PIC X(11).
-       01  WKR-RETORNO          PIC X(04).
-       01  WKR-MENSAGEM         PIC X(60).
 
        01  WKR-ENTRADA.
            05  ENT-OPERACAO     PIC X(10).
@@ -32,18 +39,43 @@
 
        01  WKR-SAIDA.
            05  SAI-RETORNO      PIC X(04).
+           05  FILLER           PIC X VALUE '|'.
            05  SAI-MENSAGEM     PIC X(60).
+           05  FILLER           PIC X VALUE '|'.
+           05  SAI-OPERACAO     PIC X(10).
+           05  FILLER           PIC X VALUE '|'.
+           05  SAI-CODIGO       PIC X(06).
+           05  FILLER           PIC X VALUE '|'.
+           05  SAI-NOME         PIC X(30).
+           05  FILLER           PIC X VALUE '|'.
+           05  SAI-EMAIL        PIC X(60).
+           05  FILLER           PIC X VALUE '|'.
+           05  SAI-TELEFONE     PIC X(11).
+
+       01  WKR-OPERACAO         PIC X(10).
+       01  WKR-CODIGO           PIC X(06).
+       01  WKR-NOME             PIC X(30).
+       01  WKR-EMAIL            PIC X(60).
+       01  WKR-TELEFONE         PIC X(11).
+       01  WKR-RETORNO          PIC X(04).
+       01  WKR-MENSAGEM         PIC X(60).
 
        PROCEDURE DIVISION.
 
        0000-PRINCIPAL.
            PERFORM 0100-INICIAR.
-           PERFORM 0200-CARREGAR-EXEMPLO.
-           PERFORM 0300-VALIDAR.
-           PERFORM 0900-MOSTRAR-RETORNO.
+           PERFORM 0200-ABRIR-ARQUIVOS.
+           PERFORM 0300-LER-ENTRADA.
+           IF WKR-VALIDO = 'S'
+              PERFORM 0400-VALIDAR
+           END-IF.
+           PERFORM 0900-GRAVAR-SAIDA.
+           PERFORM 0950-FECHAR-ARQUIVOS.
            STOP RUN.
 
        0100-INICIAR.
+           MOVE SPACES TO WKR-ENTRADA.
+           MOVE SPACES TO WKR-SAIDA.
            MOVE SPACES TO WKR-OPERACAO.
            MOVE SPACES TO WKR-CODIGO.
            MOVE SPACES TO WKR-NOME.
@@ -51,18 +83,21 @@
            MOVE SPACES TO WKR-TELEFONE.
            MOVE '0000' TO WKR-RETORNO.
            MOVE SPACES TO WKR-MENSAGEM.
-           MOVE SPACES TO WKR-ENTRADA.
-           MOVE SPACES TO WKR-SAIDA.
            MOVE 'S' TO WKR-VALIDO.
 
-       0200-CARREGAR-EXEMPLO.
-           MOVE 'CADASTRAR' TO ENT-OPERACAO.
-           MOVE SPACES TO ENT-CODIGO.
-           MOVE 'MARIA OLIVEIRA' TO ENT-NOME.
-           MOVE 'maria.oliveira@cooperativa.com' TO ENT-EMAIL.
-           MOVE SPACES TO ENT-TELEFONE.
+       0200-ABRIR-ARQUIVOS.
+           OPEN INPUT ARQ-ENT.
+           OPEN OUTPUT ARQ-SAI.
 
-       0300-VALIDAR.
+       0300-LER-ENTRADA.
+           READ ARQ-ENT INTO WKR-ENTRADA
+              AT END
+                 MOVE '0422' TO WKR-RETORNO
+                 MOVE 'ARQUIVO DE ENTRADA VAZIO.' TO WKR-MENSAGEM
+                 MOVE 'N' TO WKR-VALIDO
+           END-READ.
+
+       0400-VALIDAR.
            MOVE ENT-OPERACAO TO WKR-OPERACAO.
            MOVE ENT-CODIGO TO WKR-CODIGO.
            MOVE ENT-NOME TO WKR-NOME.
@@ -89,19 +124,19 @@
 
            IF WKR-VALIDO = 'S'
               IF WKR-OPERACAO = 'CONSULTAR'
-                 PERFORM 0400-VALIDAR-CONSULTA
+                 PERFORM 0500-VALIDAR-CONSULTA
               END-IF
            END-IF.
 
            IF WKR-VALIDO = 'S'
               IF WKR-OPERACAO = 'CADASTRAR'
-                 PERFORM 0500-VALIDAR-CADASTRO
+                 PERFORM 0600-VALIDAR-CADASTRO
               END-IF
            END-IF.
 
            IF WKR-VALIDO = 'S'
               IF WKR-OPERACAO = 'ATUALIZAR'
-                 PERFORM 0600-VALIDAR-ATUALIZACAO
+                 PERFORM 0700-VALIDAR-ATUALIZACAO
               END-IF
            END-IF.
 
@@ -110,7 +145,7 @@
               MOVE 'VALIDACAO REALIZADA.' TO WKR-MENSAGEM
            END-IF.
 
-       0400-VALIDAR-CONSULTA.
+       0500-VALIDAR-CONSULTA.
            IF WKR-CODIGO = SPACES
               MOVE '0422' TO WKR-RETORNO
               MOVE 'CODIGO OBRIGATORIO.' TO WKR-MENSAGEM
@@ -118,10 +153,10 @@
            END-IF.
 
            IF WKR-VALIDO = 'S'
-              PERFORM 0700-VALIDAR-CODIGO
+              PERFORM 0800-VALIDAR-CODIGO
            END-IF.
 
-       0500-VALIDAR-CADASTRO.
+       0600-VALIDAR-CADASTRO.
            IF WKR-NOME = SPACES
               MOVE '0422' TO WKR-RETORNO
               MOVE 'NOME OBRIGATORIO.' TO WKR-MENSAGEM
@@ -137,7 +172,7 @@
            END-IF.
 
            IF WKR-VALIDO = 'S'
-              PERFORM 0800-VALIDAR-EMAIL
+              PERFORM 0820-VALIDAR-EMAIL
            END-IF.
 
            IF WKR-VALIDO = 'S'
@@ -146,7 +181,7 @@
               END-IF
            END-IF.
 
-       0600-VALIDAR-ATUALIZACAO.
+       0700-VALIDAR-ATUALIZACAO.
            IF WKR-CODIGO = SPACES
               MOVE '0422' TO WKR-RETORNO
               MOVE 'CODIGO OBRIGATORIO.' TO WKR-MENSAGEM
@@ -154,7 +189,7 @@
            END-IF.
 
            IF WKR-VALIDO = 'S'
-              PERFORM 0700-VALIDAR-CODIGO
+              PERFORM 0800-VALIDAR-CODIGO
            END-IF.
 
            IF WKR-VALIDO = 'S'
@@ -166,7 +201,7 @@
            END-IF.
 
            IF WKR-VALIDO = 'S'
-              PERFORM 0800-VALIDAR-EMAIL
+              PERFORM 0820-VALIDAR-EMAIL
            END-IF.
 
            IF WKR-VALIDO = 'S'
@@ -175,7 +210,7 @@
               END-IF
            END-IF.
 
-       0700-VALIDAR-CODIGO.
+       0800-VALIDAR-CODIGO.
            MOVE 1 TO WKR-I.
            PERFORM UNTIL WKR-I > 6 OR WKR-VALIDO = 'N'
               MOVE WKR-CODIGO(WKR-I:1) TO WKR-CHAR
@@ -187,7 +222,7 @@
               ADD 1 TO WKR-I
            END-PERFORM.
 
-       0800-VALIDAR-EMAIL.
+       0820-VALIDAR-EMAIL.
            MOVE ZERO TO WKR-QTD-ARROBA.
            MOVE 'N' TO WKR-TEM-PONTO.
            MOVE 1 TO WKR-I.
@@ -229,9 +264,17 @@
               ADD 1 TO WKR-I
            END-PERFORM.
 
-       0900-MOSTRAR-RETORNO.
+       0900-GRAVAR-SAIDA.
            MOVE WKR-RETORNO TO SAI-RETORNO.
            MOVE WKR-MENSAGEM TO SAI-MENSAGEM.
+           MOVE WKR-OPERACAO TO SAI-OPERACAO.
+           MOVE WKR-CODIGO TO SAI-CODIGO.
+           MOVE WKR-NOME TO SAI-NOME.
+           MOVE WKR-EMAIL TO SAI-EMAIL.
+           MOVE WKR-TELEFONE TO SAI-TELEFONE.
 
-           DISPLAY 'RETORNO: ' SAI-RETORNO.
-           DISPLAY 'MENSAGEM: ' SAI-MENSAGEM.
+           WRITE REG-SAI FROM WKR-SAIDA.
+
+       0950-FECHAR-ARQUIVOS.
+           CLOSE ARQ-ENT.
+           CLOSE ARQ-SAI.
