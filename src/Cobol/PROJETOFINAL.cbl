@@ -39,17 +39,17 @@
 
        01  WKR-SAIDA.
            05  SAI-RETORNO      PIC X(04).
-           05  FILLER           PIC X VALUE '|'.
+           05  SAI-SEP-1        PIC X.
            05  SAI-MENSAGEM     PIC X(60).
-           05  FILLER           PIC X VALUE '|'.
+           05  SAI-SEP-2        PIC X.
            05  SAI-OPERACAO     PIC X(10).
-           05  FILLER           PIC X VALUE '|'.
+           05  SAI-SEP-3        PIC X.
            05  SAI-CODIGO       PIC X(06).
-           05  FILLER           PIC X VALUE '|'.
+           05  SAI-SEP-4        PIC X.
            05  SAI-NOME         PIC X(30).
-           05  FILLER           PIC X VALUE '|'.
+           05  SAI-SEP-5        PIC X.
            05  SAI-EMAIL        PIC X(60).
-           05  FILLER           PIC X VALUE '|'.
+           05  SAI-SEP-6        PIC X.
            05  SAI-TELEFONE     PIC X(11).
 
        01  WKR-OPERACAO         PIC X(10).
@@ -75,7 +75,6 @@
 
        0100-INICIAR.
            MOVE SPACES TO WKR-ENTRADA.
-           MOVE SPACES TO WKR-SAIDA.
            MOVE SPACES TO WKR-OPERACAO.
            MOVE SPACES TO WKR-CODIGO.
            MOVE SPACES TO WKR-NOME.
@@ -84,6 +83,21 @@
            MOVE '0000' TO WKR-RETORNO.
            MOVE SPACES TO WKR-MENSAGEM.
            MOVE 'S' TO WKR-VALIDO.
+
+           MOVE SPACES TO SAI-RETORNO.
+           MOVE SPACES TO SAI-MENSAGEM.
+           MOVE SPACES TO SAI-OPERACAO.
+           MOVE SPACES TO SAI-CODIGO.
+           MOVE SPACES TO SAI-NOME.
+           MOVE SPACES TO SAI-EMAIL.
+           MOVE SPACES TO SAI-TELEFONE.
+
+           MOVE '|' TO SAI-SEP-1.
+           MOVE '|' TO SAI-SEP-2.
+           MOVE '|' TO SAI-SEP-3.
+           MOVE '|' TO SAI-SEP-4.
+           MOVE '|' TO SAI-SEP-5.
+           MOVE '|' TO SAI-SEP-6.
 
        0200-ABRIR-ARQUIVOS.
            OPEN INPUT ARQ-ENT.

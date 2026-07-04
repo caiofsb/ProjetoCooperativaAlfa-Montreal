@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Contratos\Cooperativa.Contratos.csproj" />
+    <ProjectReference Include="..\Helper\Cooperativa.Helper.csproj" />
   </ItemGroup>
 
 </Project>

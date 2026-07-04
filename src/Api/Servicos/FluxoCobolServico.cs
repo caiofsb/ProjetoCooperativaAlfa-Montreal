@@ -14,7 +14,8 @@ public sealed class FluxoCobolServico : IFluxoCobolServico
         CancellationToken cancellationToken = default
     )
     {
-        var pastaRuntime = Path.Combine(Directory.GetCurrentDirectory(), "runtime");
+        var raizProjeto = EncontrarRaizProjeto();
+        var pastaRuntime = Path.Combine(raizProjeto, "runtime");
         var arquivoEntrada = Path.Combine(pastaRuntime, "entrada.txt");
         var arquivoSaida = Path.Combine(pastaRuntime, "saida.txt");
         var executavelCobol = Path.Combine(pastaRuntime, "PROJFINAL.exe");
@@ -23,7 +24,9 @@ public sealed class FluxoCobolServico : IFluxoCobolServico
 
         if (!File.Exists(executavelCobol))
         {
-            return ErroSistema("Executavel COBOL nao encontrado.");
+            return ErroSistema(
+                "Executavel COBOL nao encontrado em: " + executavelCobol
+            );
         }
 
         var linhaEntrada = MontarLinhaEntrada(entrada);
@@ -45,7 +48,7 @@ public sealed class FluxoCobolServico : IFluxoCobolServico
             StartInfo = new ProcessStartInfo
             {
                 FileName = executavelCobol,
-                WorkingDirectory = Directory.GetCurrentDirectory(),
+                WorkingDirectory = raizProjeto,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -72,14 +75,25 @@ public sealed class FluxoCobolServico : IFluxoCobolServico
         {
             return ErroSistema("Tempo limite ao executar COBOL.");
         }
-        catch
+        catch (Exception erro)
         {
-            return ErroSistema("Falha ao executar COBOL.");
+            return ErroSistema("Falha ao executar COBOL: " + erro.Message);
+        }
+
+        if (processo.ExitCode != 0)
+        {
+            var erroCobol = await processo.StandardError.ReadToEndAsync(
+                cancellationToken
+            );
+
+            return ErroSistema("COBOL retornou erro: " + erroCobol);
         }
 
         if (!File.Exists(arquivoSaida))
         {
-            return ErroSistema("Arquivo de saida do COBOL nao encontrado.");
+            return ErroSistema(
+                "Arquivo de saida do COBOL nao encontrado em: " + arquivoSaida
+            );
         }
 
         var linhaSaida = await File.ReadAllTextAsync(
@@ -100,35 +114,74 @@ public sealed class FluxoCobolServico : IFluxoCobolServico
                Ajustar(entrada.Telefone ?? string.Empty, 11);
     }
 
-    public static ResultadoCobol InterpretarSaida(string linha)
-    {
-        var partes = linha.TrimEnd().Split('|');
+public static ResultadoCobol InterpretarSaida(string conteudo)
+{
+    var linha = conteudo
+        .Replace("\r", "")
+        .Split('\n')
+        .FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
 
-        if (partes.Length < 7)
+    if (string.IsNullOrWhiteSpace(linha))
+    {
+        return ErroSistema("Saida do COBOL vazia.");
+    }
+
+    var partes = linha.Split('|');
+
+    if (partes.Length < 7)
+    {
+        return ErroSistema("Saida do COBOL invalida: " + linha);
+    }
+
+    var codigoRetorno = partes[0].Trim();
+    var mensagem = partes[1].Trim();
+
+    var cliente = new Cliente
+    {
+        Codigo = partes[3].Trim(),
+        Nome = partes[4].Trim(),
+        Email = partes[5].Trim(),
+        Telefone = string.IsNullOrWhiteSpace(partes[6])
+            ? null
+            : partes[6].Trim()
+    };
+
+    return new ResultadoCobol
+    {
+        Sucesso = codigoRetorno == CodigoResposta.Sucesso,
+        CodigoRetorno = codigoRetorno,
+        Mensagem = mensagem,
+        Cliente = cliente
+    };
+}
+
+    private static string EncontrarRaizProjeto()
+    {
+        var pasta = new DirectoryInfo(Directory.GetCurrentDirectory());
+
+        while (pasta is not null)
         {
-            return ErroSistema("Saida do COBOL invalida.");
+            var temSolution =
+                File.Exists(Path.Combine(pasta.FullName, "Cooperativa.sln")) ||
+                File.Exists(Path.Combine(pasta.FullName, "Cooperativa.slnx"));
+
+            var temPastaSrc = Directory.Exists(
+                Path.Combine(pasta.FullName, "src")
+            );
+
+            var temPastaRuntime = Directory.Exists(
+                Path.Combine(pasta.FullName, "runtime")
+            );
+
+            if (temSolution && temPastaSrc && temPastaRuntime)
+            {
+                return pasta.FullName;
+            }
+
+            pasta = pasta.Parent;
         }
 
-        var codigoRetorno = partes[0].Trim();
-        var mensagem = partes[1].Trim();
-
-        var cliente = new Cliente
-        {
-            Codigo = partes[3].Trim(),
-            Nome = partes[4].Trim(),
-            Email = partes[5].Trim(),
-            Telefone = string.IsNullOrWhiteSpace(partes[6])
-                ? null
-                : partes[6].Trim()
-        };
-
-        return new ResultadoCobol
-        {
-            Sucesso = codigoRetorno == CodigoResposta.Sucesso,
-            CodigoRetorno = codigoRetorno,
-            Mensagem = mensagem,
-            Cliente = cliente
-        };
+        return Directory.GetCurrentDirectory();
     }
 
     private static ResultadoCobol ErroSistema(string mensagem)

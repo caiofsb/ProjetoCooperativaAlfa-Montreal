@@ -1,1 +1,1 @@
-0000 VALIDACAO REALIZADA.                                         CADASTRAR         Maria Oliveira                 maria.oliveira@cooperativa.com
+0422|CODIGO DEVE SER NUMERICO.                                   |CONSULTAR |ABC123|                              |                                                            |
