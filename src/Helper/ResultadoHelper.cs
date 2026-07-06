@@ -53,6 +53,16 @@ public sealed class ResultadoHelper
         };
     }
 
+    public static ResultadoHelper ErroSistema(string mensagem)
+    {
+        return new ResultadoHelper
+        {
+            Sucesso = false,
+            CodigoRetorno = CodigoResposta.ErroSistema,
+            Mensagem = mensagem
+        };
+    }
+
     public string FormatarLinha()
     {
         var codigo = Cliente?.Codigo ?? string.Empty;

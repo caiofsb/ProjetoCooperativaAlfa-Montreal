@@ -19,31 +19,38 @@ public sealed class ClienteDb2Servico : IClienteServico
             return ResultadoHelper.DadosInvalidos("Codigo obrigatorio.");
         }
 
-        using var conexao = new OdbcConnection(connectionString);
-        conexao.Open();
-
-        using var comando = conexao.CreateCommand();
-        comando.CommandText = """
-            SELECT CLI_CODIGO,
-                   CLI_NOME,
-                   CLI_EMAIL,
-                   CLI_TELEFONE
-              FROM CLIENTES
-             WHERE CLI_CODIGO = ?
-            """;
-
-        comando.Parameters.AddWithValue("codigo", codigo);
-
-        using var leitor = comando.ExecuteReader();
-
-        if (!leitor.Read())
+        try
         {
-            return ResultadoHelper.NaoEncontrado();
+            using var conexao = new OdbcConnection(connectionString);
+            conexao.Open();
+
+            using var comando = conexao.CreateCommand();
+            comando.CommandText = """
+                SELECT CLI_CODIGO,
+                       CLI_NOME,
+                       CLI_EMAIL,
+                       CLI_TELEFONE
+                  FROM CLIENTES
+                 WHERE CLI_CODIGO = ?
+                """;
+
+            comando.Parameters.AddWithValue("codigo", codigo);
+
+            using var leitor = comando.ExecuteReader();
+
+            if (!leitor.Read())
+            {
+                return ResultadoHelper.NaoEncontrado();
+            }
+
+            var cliente = LerCliente(leitor);
+
+            return ResultadoHelper.Ok(cliente, "Cliente encontrado.");
         }
-
-        var cliente = LerCliente(leitor);
-
-        return ResultadoHelper.Ok(cliente, "Cliente encontrado.");
+        catch
+        {
+            return ResultadoHelper.ErroSistema("Erro ao consultar DB2.");
+        }
     }
 
     public ResultadoHelper Cadastrar(string nome, string email, string? telefone)
@@ -58,15 +65,15 @@ public sealed class ClienteDb2Servico : IClienteServico
             return ResultadoHelper.DadosInvalidos("Email obrigatorio.");
         }
 
-        if (EmailJaExiste(email, null))
-        {
-            return ResultadoHelper.EmailDuplicado();
-        }
-
-        var codigo = GerarProximoCodigo();
-
         try
         {
+            if (EmailJaExiste(email, null))
+            {
+                return ResultadoHelper.EmailDuplicado();
+            }
+
+            var codigo = GerarProximoCodigo();
+
             using var conexao = new OdbcConnection(connectionString);
             conexao.Open();
 
@@ -102,6 +109,10 @@ public sealed class ClienteDb2Servico : IClienteServico
         {
             return ResultadoHelper.EmailDuplicado();
         }
+        catch
+        {
+            return ResultadoHelper.ErroSistema("Erro ao cadastrar DB2.");
+        }
     }
 
     public ResultadoHelper Atualizar(string codigo, string email, string? telefone)
@@ -116,20 +127,20 @@ public sealed class ClienteDb2Servico : IClienteServico
             return ResultadoHelper.DadosInvalidos("Email obrigatorio.");
         }
 
-        var clienteAtual = Consultar(codigo);
-
-        if (!clienteAtual.Sucesso)
-        {
-            return clienteAtual;
-        }
-
-        if (EmailJaExiste(email, codigo))
-        {
-            return ResultadoHelper.EmailDuplicado();
-        }
-
         try
         {
+            var clienteAtual = Consultar(codigo);
+
+            if (!clienteAtual.Sucesso)
+            {
+                return clienteAtual;
+            }
+
+            if (EmailJaExiste(email, codigo))
+            {
+                return ResultadoHelper.EmailDuplicado();
+            }
+
             using var conexao = new OdbcConnection(connectionString);
             conexao.Open();
 
@@ -164,6 +175,10 @@ public sealed class ClienteDb2Servico : IClienteServico
         catch (OdbcException erro) when (EhEmailDuplicado(erro))
         {
             return ResultadoHelper.EmailDuplicado();
+        }
+        catch
+        {
+            return ResultadoHelper.ErroSistema("Erro ao atualizar DB2.");
         }
     }
 

@@ -8,20 +8,42 @@ if (args.Length > 0 &&
     var entradaHelper = Path.Combine("runtime", "helper-entrada.txt");
     var saidaHelper = Path.Combine("runtime", "helper-saida.txt");
 
-    var comandoArquivo = ArquivoHelper.LerEntrada(entradaHelper);
-    var resultadoArquivo = Processar(servico, comandoArquivo);
+    try
+    {
+        var comandoArquivo = ArquivoHelper.LerEntrada(entradaHelper);
+        var resultadoArquivo = Processar(servico, comandoArquivo);
 
-    ArquivoHelper.GravarSaida(saidaHelper, resultadoArquivo);
+        ArquivoHelper.GravarSaida(saidaHelper, resultadoArquivo);
 
-    return 0;
+        return 0;
+    }
+    catch
+    {
+        var erro = ResultadoHelper.ErroSistema("Falha no helper.");
+
+        ArquivoHelper.GravarSaida(saidaHelper, erro);
+
+        return 1;
+    }
 }
 
-var comando = LeitorComando.Ler(args);
-var resposta = Processar(servico, comando);
+try
+{
+    var comando = LeitorComando.Ler(args);
+    var resposta = Processar(servico, comando);
 
-Console.WriteLine(resposta.FormatarLinha());
+    Console.WriteLine(resposta.FormatarLinha());
 
-return resposta.Sucesso ? 0 : 1;
+    return resposta.Sucesso ? 0 : 1;
+}
+catch
+{
+    var erro = ResultadoHelper.ErroSistema("Falha no helper.");
+
+    Console.WriteLine(erro.FormatarLinha());
+
+    return 1;
+}
 
 static ResultadoHelper Processar(
     IClienteServico servico,
