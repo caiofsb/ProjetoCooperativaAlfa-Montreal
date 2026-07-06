@@ -1,6 +1,5 @@
 using Cooperativa.Api.Servicos;
 using Cooperativa.Contratos;
-using Cooperativa.Helper;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Cooperativa.Api.Controllers;
@@ -10,15 +9,10 @@ namespace Cooperativa.Api.Controllers;
 public sealed class ClientesController : ControllerBase
 {
     private readonly IFluxoCobolServico fluxoCobol;
-    private readonly IClienteServico clienteServico;
 
-    public ClientesController(
-        IFluxoCobolServico fluxoCobol,
-        IClienteServico clienteServico
-    )
+    public ClientesController(IFluxoCobolServico fluxoCobol)
     {
         this.fluxoCobol = fluxoCobol;
-        this.clienteServico = clienteServico;
     }
 
     [HttpGet("{codigo}")]
@@ -27,7 +21,7 @@ public sealed class ClientesController : ControllerBase
         CancellationToken cancellationToken
     )
     {
-        var validacao = await fluxoCobol.ProcessarAsync(
+        var resultado = await fluxoCobol.ProcessarAsync(
             new ClienteEntradaCobol
             {
                 Operacao = OperacaoCliente.Consultar,
@@ -35,13 +29,6 @@ public sealed class ClientesController : ControllerBase
             },
             cancellationToken
         );
-
-        if (!validacao.Sucesso)
-        {
-            return Responder(validacao);
-        }
-
-        var resultado = clienteServico.Consultar(codigo);
 
         return Responder(resultado);
     }
@@ -52,7 +39,7 @@ public sealed class ClientesController : ControllerBase
         CancellationToken cancellationToken
     )
     {
-        var validacao = await fluxoCobol.ProcessarAsync(
+        var resultado = await fluxoCobol.ProcessarAsync(
             new ClienteEntradaCobol
             {
                 Operacao = OperacaoCliente.Cadastrar,
@@ -61,17 +48,6 @@ public sealed class ClientesController : ControllerBase
                 Telefone = cadastro.Telefone
             },
             cancellationToken
-        );
-
-        if (!validacao.Sucesso)
-        {
-            return Responder(validacao);
-        }
-
-        var resultado = clienteServico.Cadastrar(
-            cadastro.Nome,
-            cadastro.Email,
-            cadastro.Telefone
         );
 
         return Responder(resultado);
@@ -84,7 +60,7 @@ public sealed class ClientesController : ControllerBase
         CancellationToken cancellationToken
     )
     {
-        var validacao = await fluxoCobol.ProcessarAsync(
+        var resultado = await fluxoCobol.ProcessarAsync(
             new ClienteEntradaCobol
             {
                 Operacao = OperacaoCliente.Atualizar,
@@ -93,17 +69,6 @@ public sealed class ClientesController : ControllerBase
                 Telefone = contato.Telefone
             },
             cancellationToken
-        );
-
-        if (!validacao.Sucesso)
-        {
-            return Responder(validacao);
-        }
-
-        var resultado = clienteServico.Atualizar(
-            codigo,
-            contato.Email,
-            contato.Telefone
         );
 
         return Responder(resultado);
@@ -119,24 +84,6 @@ public sealed class ClientesController : ControllerBase
             Cliente = resultado.Cliente
         };
 
-        return GerarResposta(resposta);
-    }
-
-    private ActionResult<RespostaCliente> Responder(ResultadoHelper resultado)
-    {
-        var resposta = new RespostaCliente
-        {
-            Sucesso = resultado.Sucesso,
-            CodigoRetorno = resultado.CodigoRetorno,
-            Mensagem = resultado.Mensagem,
-            Cliente = resultado.Cliente
-        };
-
-        return GerarResposta(resposta);
-    }
-
-    private ActionResult<RespostaCliente> GerarResposta(RespostaCliente resposta)
-    {
         if (resposta.CodigoRetorno == CodigoResposta.Sucesso)
         {
             return Ok(resposta);

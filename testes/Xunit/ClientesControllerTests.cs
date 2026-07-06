@@ -1,7 +1,6 @@
 using Cooperativa.Api.Controllers;
 using Cooperativa.Api.Servicos;
 using Cooperativa.Contratos;
-using Cooperativa.Helper;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
 
@@ -17,32 +16,30 @@ public sealed class ClientesControllerTests
             {
                 Sucesso = true,
                 CodigoRetorno = CodigoResposta.Sucesso,
-                Mensagem = "Validacao realizada."
-            }
-        );
-
-        var helper = new ClienteServicoFake(
-            ResultadoHelper.Ok(
-                new Cliente
+                Mensagem = "Cliente encontrado.",
+                Cliente = new Cliente
                 {
                     Codigo = "000001",
                     Nome = "Ana Silva",
                     Email = "ana.silva@cooperativa.com",
                     Telefone = "11988887777"
-                },
-                "Cliente encontrado."
-            )
+                }
+            }
         );
 
-        var controller = new ClientesController(fluxo, helper);
+        var controller = new ClientesController(fluxo);
 
-        var resposta = await controller.Consultar("000001", CancellationToken.None);
+        var resposta = await controller.Consultar(
+            "000001",
+            CancellationToken.None
+        );
 
         var ok = Assert.IsType<OkObjectResult>(resposta.Result);
         var corpo = Assert.IsType<RespostaCliente>(ok.Value);
 
         Assert.True(corpo.Sucesso);
         Assert.Equal("000001", corpo.Cliente?.Codigo);
+        Assert.Equal("Ana Silva", corpo.Cliente?.Nome);
     }
 
     [Fact]
@@ -53,17 +50,21 @@ public sealed class ClientesControllerTests
             {
                 Sucesso = false,
                 CodigoRetorno = CodigoResposta.DadosInvalidos,
-                Mensagem = "Codigo deve ser numerico."
+                Mensagem = "Codigo nao numerico."
             }
         );
 
-        var helper = new ClienteServicoFake(ResultadoHelper.NaoEncontrado());
+        var controller = new ClientesController(fluxo);
 
-        var controller = new ClientesController(fluxo, helper);
+        var resposta = await controller.Consultar(
+            "ABC123",
+            CancellationToken.None
+        );
 
-        var resposta = await controller.Consultar("ABC123", CancellationToken.None);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(
+            resposta.Result
+        );
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(resposta.Result);
         var corpo = Assert.IsType<RespostaCliente>(badRequest.Value);
 
         Assert.False(corpo.Sucesso);
@@ -76,15 +77,13 @@ public sealed class ClientesControllerTests
         var fluxo = new FluxoCobolFake(
             new ResultadoCobol
             {
-                Sucesso = true,
-                CodigoRetorno = CodigoResposta.Sucesso,
-                Mensagem = "Validacao realizada."
+                Sucesso = false,
+                CodigoRetorno = CodigoResposta.EmailDuplicado,
+                Mensagem = "Email ja cadastrado."
             }
         );
 
-        var helper = new ClienteServicoFake(ResultadoHelper.EmailDuplicado());
-
-        var controller = new ClientesController(fluxo, helper);
+        var controller = new ClientesController(fluxo);
 
         var resposta = await controller.Cadastrar(
             new CadastroCliente
@@ -103,6 +102,37 @@ public sealed class ClientesControllerTests
         Assert.Equal(CodigoResposta.EmailDuplicado, corpo.CodigoRetorno);
     }
 
+    [Fact]
+    public async Task Atualizar_cliente_inexistente_deve_retornar_not_found()
+    {
+        var fluxo = new FluxoCobolFake(
+            new ResultadoCobol
+            {
+                Sucesso = false,
+                CodigoRetorno = CodigoResposta.NaoEncontrado,
+                Mensagem = "Cliente nao encontrado."
+            }
+        );
+
+        var controller = new ClientesController(fluxo);
+
+        var resposta = await controller.AtualizarContato(
+            "999999",
+            new ContatoCliente
+            {
+                Email = "teste@cooperativa.com",
+                Telefone = "11999999999"
+            },
+            CancellationToken.None
+        );
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(resposta.Result);
+        var corpo = Assert.IsType<RespostaCliente>(notFound.Value);
+
+        Assert.False(corpo.Sucesso);
+        Assert.Equal(CodigoResposta.NaoEncontrado, corpo.CodigoRetorno);
+    }
+
     private sealed class FluxoCobolFake : IFluxoCobolServico
     {
         private readonly ResultadoCobol resultado;
@@ -118,31 +148,6 @@ public sealed class ClientesControllerTests
         )
         {
             return Task.FromResult(resultado);
-        }
-    }
-
-    private sealed class ClienteServicoFake : IClienteServico
-    {
-        private readonly ResultadoHelper resultado;
-
-        public ClienteServicoFake(ResultadoHelper resultado)
-        {
-            this.resultado = resultado;
-        }
-
-        public ResultadoHelper Consultar(string codigo)
-        {
-            return resultado;
-        }
-
-        public ResultadoHelper Cadastrar(string nome, string email, string? telefone)
-        {
-            return resultado;
-        }
-
-        public ResultadoHelper Atualizar(string codigo, string email, string? telefone)
-        {
-            return resultado;
         }
     }
 }
