@@ -13,6 +13,12 @@
            SELECT ARQ-SAI ASSIGN TO "runtime/saida.txt"
                ORGANIZATION IS LINE SEQUENTIAL.
 
+           SELECT ARQ-HLP-ENT ASSIGN TO "runtime/helper-entrada.txt"
+               ORGANIZATION IS LINE SEQUENTIAL.
+
+           SELECT ARQ-HLP-SAI ASSIGN TO "runtime/helper-saida.txt"
+               ORGANIZATION IS LINE SEQUENTIAL.
+
        DATA DIVISION.
        FILE SECTION.
 
@@ -22,6 +28,12 @@
        FD  ARQ-SAI.
        01  REG-SAI              PIC X(188).
 
+       FD  ARQ-HLP-ENT.
+       01  REG-HLP-ENT          PIC X(117).
+
+       FD  ARQ-HLP-SAI.
+       01  REG-HLP-SAI          PIC X(176).
+
        WORKING-STORAGE SECTION.
 
        01  WKR-VALIDO           PIC X VALUE 'S'.
@@ -29,28 +41,11 @@
        01  WKR-QTD-ARROBA       PIC 9(02) VALUE 0.
        01  WKR-TEM-PONTO        PIC X VALUE 'N'.
        01  WKR-CHAR             PIC X.
+       01  WKR-COMANDO          PIC X(200).
 
-       01  WKR-ENTRADA.
-           05  ENT-OPERACAO     PIC X(10).
-           05  ENT-CODIGO       PIC X(06).
-           05  ENT-NOME         PIC X(30).
-           05  ENT-EMAIL        PIC X(60).
-           05  ENT-TELEFONE     PIC X(11).
-
-       01  WKR-SAIDA.
-           05  SAI-RETORNO      PIC X(04).
-           05  SAI-SEP-1        PIC X.
-           05  SAI-MENSAGEM     PIC X(60).
-           05  SAI-SEP-2        PIC X.
-           05  SAI-OPERACAO     PIC X(10).
-           05  SAI-SEP-3        PIC X.
-           05  SAI-CODIGO       PIC X(06).
-           05  SAI-SEP-4        PIC X.
-           05  SAI-NOME         PIC X(30).
-           05  SAI-SEP-5        PIC X.
-           05  SAI-EMAIL        PIC X(60).
-           05  SAI-SEP-6        PIC X.
-           05  SAI-TELEFONE     PIC X(11).
+           COPY CLIENTE.
+           COPY SAIDA.
+           COPY HELPER.
 
        01  WKR-OPERACAO         PIC X(10).
        01  WKR-CODIGO           PIC X(06).
@@ -66,15 +61,25 @@
            PERFORM 0100-INICIAR.
            PERFORM 0200-ABRIR-ARQUIVOS.
            PERFORM 0300-LER-ENTRADA.
+
            IF WKR-VALIDO = 'S'
               PERFORM 0400-VALIDAR
            END-IF.
+
+           IF WKR-VALIDO = 'S'
+              PERFORM 1000-GRAVAR-ENTRADA-HELPER
+              PERFORM 1100-CHAMAR-HELPER
+              PERFORM 1200-LER-RETORNO-HELPER
+           END-IF.
+
            PERFORM 0900-GRAVAR-SAIDA.
            PERFORM 0950-FECHAR-ARQUIVOS.
            STOP RUN.
 
        0100-INICIAR.
            MOVE SPACES TO WKR-ENTRADA.
+           MOVE SPACES TO WKR-HELPER.
+           MOVE SPACES TO WKR-RET-HELPER.
            MOVE SPACES TO WKR-OPERACAO.
            MOVE SPACES TO WKR-CODIGO.
            MOVE SPACES TO WKR-NOME.
@@ -82,6 +87,7 @@
            MOVE SPACES TO WKR-TELEFONE.
            MOVE '0000' TO WKR-RETORNO.
            MOVE SPACES TO WKR-MENSAGEM.
+           MOVE SPACES TO WKR-COMANDO.
            MOVE 'S' TO WKR-VALIDO.
 
            MOVE SPACES TO SAI-RETORNO.
@@ -107,7 +113,7 @@
            READ ARQ-ENT INTO WKR-ENTRADA
               AT END
                  MOVE '0422' TO WKR-RETORNO
-                 MOVE 'ARQUIVO DE ENTRADA VAZIO.' TO WKR-MENSAGEM
+                 MOVE 'ENTRADA VAZIA.' TO WKR-MENSAGEM
                  MOVE 'N' TO WKR-VALIDO
            END-READ.
 
@@ -120,7 +126,7 @@
 
            IF WKR-OPERACAO = SPACES
               MOVE '0422' TO WKR-RETORNO
-              MOVE 'OPERACAO OBRIGATORIA.' TO WKR-MENSAGEM
+              MOVE 'OPERACAO OBRIG.' TO WKR-MENSAGEM
               MOVE 'N' TO WKR-VALIDO
            END-IF.
 
@@ -152,11 +158,6 @@
               IF WKR-OPERACAO = 'ATUALIZAR'
                  PERFORM 0700-VALIDAR-ATUALIZACAO
               END-IF
-           END-IF.
-
-           IF WKR-VALIDO = 'S'
-              MOVE '0000' TO WKR-RETORNO
-              MOVE 'VALIDACAO REALIZADA.' TO WKR-MENSAGEM
            END-IF.
 
        0500-VALIDAR-CONSULTA.
@@ -230,7 +231,7 @@
               MOVE WKR-CODIGO(WKR-I:1) TO WKR-CHAR
               IF WKR-CHAR < '0' OR WKR-CHAR > '9'
                  MOVE '0422' TO WKR-RETORNO
-                 MOVE 'CODIGO DEVE SER NUMERICO.' TO WKR-MENSAGEM
+                 MOVE 'CODIGO NAO NUMERICO.' TO WKR-MENSAGEM
                  MOVE 'N' TO WKR-VALIDO
               END-IF
               ADD 1 TO WKR-I
@@ -272,7 +273,7 @@
               MOVE WKR-TELEFONE(WKR-I:1) TO WKR-CHAR
               IF WKR-CHAR < '0' OR WKR-CHAR > '9'
                  MOVE '0422' TO WKR-RETORNO
-                 MOVE 'TELEFONE DEVE TER 11 DIGITOS.' TO WKR-MENSAGEM
+                 MOVE 'TELEFONE INVALIDO.' TO WKR-MENSAGEM
                  MOVE 'N' TO WKR-VALIDO
               END-IF
               ADD 1 TO WKR-I
@@ -292,3 +293,49 @@
        0950-FECHAR-ARQUIVOS.
            CLOSE ARQ-ENT.
            CLOSE ARQ-SAI.
+
+       1000-GRAVAR-ENTRADA-HELPER.
+           MOVE WKR-OPERACAO TO HLP-OPERACAO.
+           MOVE WKR-CODIGO TO HLP-CODIGO.
+           MOVE WKR-NOME TO HLP-NOME.
+           MOVE WKR-EMAIL TO HLP-EMAIL.
+           MOVE WKR-TELEFONE TO HLP-TELEFONE.
+
+           OPEN OUTPUT ARQ-HLP-ENT.
+           WRITE REG-HLP-ENT FROM WKR-HELPER.
+           CLOSE ARQ-HLP-ENT.
+
+       1100-CHAMAR-HELPER.
+           MOVE SPACES TO WKR-COMANDO.
+
+           STRING
+              'dotnet ' DELIMITED BY SIZE
+              'src/Helper/bin/Debug/net10.0/' DELIMITED BY SIZE
+              'Cooperativa.Helper.dll ' DELIMITED BY SIZE
+              'ARQUIVO' DELIMITED BY SIZE
+              INTO WKR-COMANDO
+           END-STRING.
+
+           CALL "SYSTEM" USING WKR-COMANDO.
+
+       1200-LER-RETORNO-HELPER.
+           OPEN INPUT ARQ-HLP-SAI.
+
+           READ ARQ-HLP-SAI INTO WKR-RET-HELPER
+              AT END
+                 MOVE '0500' TO WKR-RETORNO
+                 MOVE 'HELPER SEM RETORNO.' TO WKR-MENSAGEM
+                 MOVE 'N' TO WKR-VALIDO
+           END-READ.
+
+           CLOSE ARQ-HLP-SAI.
+
+           IF WKR-VALIDO = 'S'
+              MOVE RHP-RETORNO TO WKR-RETORNO
+              MOVE RHP-MENSAGEM TO WKR-MENSAGEM
+              MOVE RHP-CODIGO TO WKR-CODIGO
+              MOVE RHP-NOME TO WKR-NOME
+              MOVE RHP-EMAIL TO WKR-EMAIL
+              MOVE RHP-TELEFONE TO WKR-TELEFONE
+           END-IF.
+           

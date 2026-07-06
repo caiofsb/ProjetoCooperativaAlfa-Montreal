@@ -1,9 +1,9 @@
 New-Item -ItemType Directory -Force -Path runtime | Out-Null
 
-$operacao = "CADASTRAR".PadRight(10)
-$codigo = "".PadRight(6)
-$nome = "Maria Oliveira".PadRight(30)
-$email = "maria.oliveira@cooperativa.com".PadRight(60)
+$operacao = "CONSULTAR".PadRight(10)
+$codigo = "000001".PadRight(6)
+$nome = "".PadRight(30)
+$email = "".PadRight(60)
 $telefone = "".PadRight(11)
 
 $linha = $operacao + $codigo + $nome + $email + $telefone

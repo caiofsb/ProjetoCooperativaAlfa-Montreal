@@ -60,6 +60,28 @@ public sealed class ResultadoHelper
         var email = Cliente?.Email ?? string.Empty;
         var telefone = Cliente?.Telefone ?? string.Empty;
 
-        return $"{CodigoRetorno}|{Mensagem}|{codigo}|{nome}|{email}|{telefone}";
+        return Ajustar(CodigoRetorno, 4) +
+               "|" +
+               Ajustar(Mensagem, 60) +
+               "|" +
+               Ajustar(codigo, 6) +
+               "|" +
+               Ajustar(nome, 30) +
+               "|" +
+               Ajustar(email, 60) +
+               "|" +
+               Ajustar(telefone, 11);
+    }
+
+    private static string Ajustar(string? valor, int tamanho)
+    {
+        var texto = valor ?? string.Empty;
+
+        if (texto.Length > tamanho)
+        {
+            return texto[..tamanho];
+        }
+
+        return texto.PadRight(tamanho);
     }
 }

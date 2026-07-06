@@ -1,1 +1,1 @@
-CONSULTAR ABC123                                                                                                     
+CONSULTAR 000001                                                                                                     

@@ -1,19 +1,49 @@
 ﻿using Cooperativa.Helper;
 
-var comando = LeitorComando.Ler(args);
 var servico = CriarServico();
 
-var resposta = comando.Operacao switch
+if (args.Length > 0 &&
+    string.Equals(args[0], "ARQUIVO", StringComparison.OrdinalIgnoreCase))
 {
-    "CONSULTAR" => servico.Consultar(comando.Codigo),
-    "CADASTRAR" => servico.Cadastrar(comando.Nome, comando.Email, comando.Telefone),
-    "ATUALIZAR" => servico.Atualizar(comando.Codigo, comando.Email, comando.Telefone),
-    _ => ResultadoHelper.DadosInvalidos("Operacao invalida.")
-};
+    var entradaHelper = Path.Combine("runtime", "helper-entrada.txt");
+    var saidaHelper = Path.Combine("runtime", "helper-saida.txt");
+
+    var comandoArquivo = ArquivoHelper.LerEntrada(entradaHelper);
+    var resultadoArquivo = Processar(servico, comandoArquivo);
+
+    ArquivoHelper.GravarSaida(saidaHelper, resultadoArquivo);
+
+    return 0;
+}
+
+var comando = LeitorComando.Ler(args);
+var resposta = Processar(servico, comando);
 
 Console.WriteLine(resposta.FormatarLinha());
 
 return resposta.Sucesso ? 0 : 1;
+
+static ResultadoHelper Processar(
+    IClienteServico servico,
+    ComandoHelper comando
+)
+{
+    return comando.Operacao switch
+    {
+        "CONSULTAR" => servico.Consultar(comando.Codigo),
+        "CADASTRAR" => servico.Cadastrar(
+            comando.Nome,
+            comando.Email,
+            comando.Telefone
+        ),
+        "ATUALIZAR" => servico.Atualizar(
+            comando.Codigo,
+            comando.Email,
+            comando.Telefone
+        ),
+        _ => ResultadoHelper.DadosInvalidos("Operacao invalida.")
+    };
+}
 
 static IClienteServico CriarServico()
 {

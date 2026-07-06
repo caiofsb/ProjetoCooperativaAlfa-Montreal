@@ -1,1 +1,1 @@
-0422|CODIGO DEVE SER NUMERICO.                                   |CONSULTAR |ABC123|                              |                                                            |
+0000|Cliente encontrado.                                         |CONSULTAR |000001|Ana Silva                     |ana.silva@cooperativa.com                                   |11988887777
