@@ -281,7 +281,7 @@ public sealed class FluxoCobolServico : IFluxoCobolServico
         };
     }
 
-    private static string MontarLinhaEntrada(ClienteEntradaCobol entrada)
+    public static string MontarLinhaEntrada(ClienteEntradaCobol entrada)
     {
         return Ajustar(entrada.Operacao?.ToUpperInvariant(), 10) +
                Ajustar(entrada.Codigo, 6) +
@@ -290,48 +290,71 @@ public sealed class FluxoCobolServico : IFluxoCobolServico
                Ajustar(entrada.Telefone, 11);
     }
 
-    private static ResultadoCobol InterpretarSaida(string saida)
+    public static ResultadoCobol InterpretarSaida(string saida)
+{
+    var linha = saida.TrimEnd('\r', '\n');
+    var partes = linha.Split('|');
+
+    if (partes.Length < 6)
     {
-        var linha = saida.TrimEnd('\r', '\n');
-        var partes = linha.Split('|');
-
-        if (partes.Length < 7)
-        {
-            return new ResultadoCobol
-            {
-                Sucesso = false,
-                CodigoRetorno = CodigoResposta.ErroSistema,
-                Mensagem = "Saida do COBOL em formato invalido."
-            };
-        }
-
-        var codigoRetorno = partes[0].Trim();
-        var mensagem = partes[1].Trim();
-        var codigoCliente = partes[3].Trim();
-
-        Cliente? cliente = null;
-
-        if (!string.IsNullOrWhiteSpace(codigoCliente))
-        {
-            cliente = new Cliente
-            {
-                Codigo = codigoCliente,
-                Nome = partes[4].Trim(),
-                Email = partes[5].Trim(),
-                Telefone = string.IsNullOrWhiteSpace(partes[6])
-                    ? null
-                    : partes[6].Trim()
-            };
-        }
-
         return new ResultadoCobol
         {
-            Sucesso = codigoRetorno == CodigoResposta.Sucesso,
-            CodigoRetorno = codigoRetorno,
-            Mensagem = mensagem,
-            Cliente = cliente
+            Sucesso = false,
+            CodigoRetorno = CodigoResposta.ErroSistema,
+            Mensagem = "Saida do COBOL em formato invalido."
         };
     }
+
+    var codigoRetorno = partes[0].Trim();
+    var mensagem = partes[1].Trim();
+
+    string codigoCliente;
+    string nome;
+    string email;
+    string telefone;
+
+    if (partes.Length >= 7)
+    {
+        // Formato final do COBOL:
+        // RETORNO|MENSAGEM|OPERACAO|CODIGO|NOME|EMAIL|TELEFONE
+        codigoCliente = partes[3].Trim();
+        nome = partes[4].Trim();
+        email = partes[5].Trim();
+        telefone = partes[6].Trim();
+    }
+    else
+    {
+        // Formato do Helper:
+        // RETORNO|MENSAGEM|CODIGO|NOME|EMAIL|TELEFONE
+        codigoCliente = partes[2].Trim();
+        nome = partes[3].Trim();
+        email = partes[4].Trim();
+        telefone = partes[5].Trim();
+    }
+
+    Cliente? cliente = null;
+
+    if (!string.IsNullOrWhiteSpace(codigoCliente))
+    {
+        cliente = new Cliente
+        {
+            Codigo = codigoCliente,
+            Nome = nome,
+            Email = email,
+            Telefone = string.IsNullOrWhiteSpace(telefone)
+                ? null
+                : telefone
+        };
+    }
+
+    return new ResultadoCobol
+    {
+        Sucesso = codigoRetorno == CodigoResposta.Sucesso,
+        CodigoRetorno = codigoRetorno,
+        Mensagem = mensagem,
+        Cliente = cliente
+    };
+}
 
     private static string Ajustar(string? valor, int tamanho)
     {

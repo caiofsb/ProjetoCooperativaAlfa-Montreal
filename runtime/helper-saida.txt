@@ -1,1 +1,1 @@
-0000|Cliente cadastrado.                                         |000008|Caio Felipe                   |caiosssf@gmail.com                                          |71993776563
+0000|Cliente encontrado.                                         |000001|Ana Silva                     |ana.silva@cooperativa.com                                   |11988887777

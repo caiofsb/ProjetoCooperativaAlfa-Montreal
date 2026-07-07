@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\Contratos\Cooperativa.Contratos.csproj" />
     <ProjectReference Include="..\..\src\Helper\Cooperativa.Helper.csproj" />
     <ProjectReference Include="..\..\src\Api\Cooperativa.Api.csproj" />
+    <ProjectReference Include="..\..\src\Web\Cooperativa.Web.csproj" />
   </ItemGroup>
 
 </Project>
