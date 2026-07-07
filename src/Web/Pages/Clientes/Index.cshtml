@@ -1,0 +1,355 @@
+@page
+@model Cooperativa.Web.Pages.Clientes.IndexModel
+
+@{
+    ViewData["Title"] = "Clientes";
+}
+
+<div class="pagina-clientes">
+    <section class="cabecalho-clientes">
+        <h1>Clientes</h1>
+        <p>
+            Consulta, cadastro e atualização de contato usando o fluxo
+            Razor Pages, API, COBOL, Helper e DB2.
+        </p>
+    </section>
+
+    @if (Model.Resultado is not null)
+    {
+        var classeAlerta = Model.Resultado.Sucesso
+            ? "alerta sucesso"
+            : "alerta erro";
+
+        <section class="@classeAlerta">
+            <h2>@Model.TituloResultado</h2>
+
+            <p>
+                <strong>Codigo:</strong>
+                @Model.Resultado.CodigoRetorno
+            </p>
+
+            <p>
+                <strong>Mensagem:</strong>
+                @Model.Resultado.Mensagem
+            </p>
+
+            @if (Model.Resultado.Cliente is not null)
+            {
+                <div class="dados-cliente">
+                    <p>
+                        <strong>Cliente:</strong>
+                        @Model.Resultado.Cliente.Codigo
+                    </p>
+
+                    <p>
+                        <strong>Nome:</strong>
+                        @Model.Resultado.Cliente.Nome
+                    </p>
+
+                    <p>
+                        <strong>Email:</strong>
+                        @Model.Resultado.Cliente.Email
+                    </p>
+
+                    <p>
+                        <strong>Telefone:</strong>
+                        @Model.Resultado.Cliente.Telefone
+                    </p>
+                </div>
+            }
+        </section>
+    }
+
+    <section class="grade-clientes">
+        <article class="cartao">
+            <h2>Consultar cliente</h2>
+
+            <form method="post" asp-page-handler="Consultar">
+                <label asp-for="CodigoConsulta">
+                    Codigo do cliente
+                </label>
+
+                <input asp-for="CodigoConsulta"
+                       maxlength="6"
+                       placeholder="000001" />
+
+                <button type="submit">
+                    Consultar
+                </button>
+            </form>
+        </article>
+
+        <article class="cartao">
+            <h2>Cadastrar cliente</h2>
+
+            <form method="post"
+                  asp-page-handler="Cadastrar"
+                  id="formCadastro">
+
+                <label asp-for="Cadastro.Nome">
+                    Nome
+                </label>
+
+                <input asp-for="Cadastro.Nome"
+                       maxlength="30"
+                       placeholder="Nome do cliente" />
+
+                <label asp-for="Cadastro.Email">
+                    Email
+                </label>
+
+                <input asp-for="Cadastro.Email"
+                       maxlength="60"
+                       placeholder="cliente@email.com" />
+
+                <label asp-for="Cadastro.Telefone">
+                    Telefone
+                </label>
+
+                <input asp-for="Cadastro.Telefone"
+                       maxlength="11"
+                       placeholder="11999999999" />
+
+                <button type="button"
+                        onclick="abrirConfirmacaoCadastro()">
+                    Revisar cadastro
+                </button>
+            </form>
+        </article>
+
+        <article class="cartao">
+            <h2>Atualizar contato</h2>
+
+            <form method="post" asp-page-handler="Atualizar">
+                <label asp-for="CodigoAtualizacao">
+                    Codigo do cliente
+                </label>
+
+                <input asp-for="CodigoAtualizacao"
+                       maxlength="6"
+                       placeholder="000001" />
+
+                <label asp-for="Contato.Email">
+                    Novo email
+                </label>
+
+                <input asp-for="Contato.Email"
+                       maxlength="60"
+                       placeholder="novo@email.com" />
+
+                <label asp-for="Contato.Telefone">
+                    Novo telefone
+                </label>
+
+                <input asp-for="Contato.Telefone"
+                       maxlength="11"
+                       placeholder="11999999999" />
+
+                <button type="submit">
+                    Atualizar
+                </button>
+            </form>
+        </article>
+    </section>
+</div>
+
+<div id="modalConfirmacaoCadastro"
+     class="modal-confirmacao"
+     hidden>
+
+    <div class="modal-conteudo">
+        <h2>Confirmar cadastro</h2>
+
+        <p>
+            Confira os dados antes de inserir o cliente no sistema.
+        </p>
+
+        <div class="resumo-confirmacao">
+            <p>
+                <strong>Nome:</strong>
+                <span id="confirmacaoNome"></span>
+            </p>
+
+            <p>
+                <strong>Email:</strong>
+                <span id="confirmacaoEmail"></span>
+            </p>
+
+            <p>
+                <strong>Telefone:</strong>
+                <span id="confirmacaoTelefone"></span>
+            </p>
+        </div>
+
+        <div class="acoes-modal">
+            <button type="button"
+                    class="botao-secundario"
+                    onclick="fecharConfirmacaoCadastro()">
+                Voltar e corrigir
+            </button>
+
+            <button type="submit"
+                    form="formCadastro">
+                Confirmar cadastro
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pagina-clientes {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    .cabecalho-clientes {
+        margin-bottom: 24px;
+    }
+
+    .cabecalho-clientes h1 {
+        margin-bottom: 8px;
+    }
+
+    .grade-clientes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .cartao {
+        border: 1px solid #dddddd;
+        border-radius: 10px;
+        padding: 20px;
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .cartao h2 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        font-size: 1.3rem;
+    }
+
+    label {
+        display: block;
+        margin-top: 12px;
+        margin-bottom: 4px;
+        font-weight: 600;
+    }
+
+    input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #cccccc;
+        border-radius: 6px;
+        box-sizing: border-box;
+    }
+
+    button {
+        margin-top: 16px;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .botao-secundario {
+        border: 1px solid #cccccc;
+        background: #ffffff;
+    }
+
+    .alerta {
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+
+    .alerta h2 {
+        margin-top: 0;
+    }
+
+    .sucesso {
+        border: 1px solid #a5d6a7;
+        background: #f1f8e9;
+    }
+
+    .erro {
+        border: 1px solid #ef9a9a;
+        background: #ffebee;
+    }
+
+    .dados-cliente {
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    .modal-confirmacao {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 9999;
+    }
+
+    .modal-conteudo {
+        width: 100%;
+        max-width: 460px;
+        border-radius: 12px;
+        padding: 24px;
+        background: #ffffff;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-conteudo h2 {
+        margin-top: 0;
+    }
+
+    .resumo-confirmacao {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 8px;
+        background: #f7f7f7;
+    }
+
+    .acoes-modal {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 20px;
+    }
+</style>
+
+<script>
+    function abrirConfirmacaoCadastro() {
+        const nome = document.getElementById("Cadastro_Nome").value.trim();
+        const email = document.getElementById("Cadastro_Email").value.trim();
+        const telefone = document.getElementById("Cadastro_Telefone").value.trim();
+
+        if (!nome) {
+            alert("Informe o nome antes de revisar o cadastro.");
+            return;
+        }
+
+        if (!email) {
+            alert("Informe o email antes de revisar o cadastro.");
+            return;
+        }
+
+        document.getElementById("confirmacaoNome").textContent = nome;
+        document.getElementById("confirmacaoEmail").textContent = email;
+        document.getElementById("confirmacaoTelefone").textContent =
+            telefone || "Nao informado";
+
+        document.getElementById("modalConfirmacaoCadastro").hidden = false;
+    }
+
+    function fecharConfirmacaoCadastro() {
+        document.getElementById("modalConfirmacaoCadastro").hidden = true;
+    }
+</script>

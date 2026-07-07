@@ -1,1 +1,1 @@
-0000|Cliente encontrado.                                         |000002|Bruno Costa                   |bruno.costa@cooperativa.com                                 |21977776666
+0000|Cliente cadastrado.                                         |000007|Luiz                          |luiz@corpo.com                                              |31999665531

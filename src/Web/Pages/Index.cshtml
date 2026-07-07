@@ -1,10 +1,21 @@
 ﻿@page
 @model IndexModel
+
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Cooperativa Alfa";
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Cooperativa Financeira Alfa</h1>
+
+    <p>
+        Sistema de modernização com Razor Pages, API .NET, COBOL,
+        Helper e DB2.
+    </p>
+
+    <p>
+        <a class="btn btn-primary" asp-page="/Clientes/Index">
+            Acessar tela de clientes
+        </a>
+    </p>
 </div>
