@@ -6,191 +6,330 @@ namespace Cooperativa.Api.Servicos;
 
 public sealed class FluxoCobolServico : IFluxoCobolServico
 {
-    private const string CodigoErroSistema = "0500";
-    private const int TempoLimiteSegundos = 10;
-
     public async Task<ResultadoCobol> ProcessarAsync(
         ClienteEntradaCobol entrada,
         CancellationToken cancellationToken = default
     )
     {
-        var raizProjeto = EncontrarRaizProjeto();
-        var pastaRuntime = Path.Combine(raizProjeto, "runtime");
-        var arquivoEntrada = Path.Combine(pastaRuntime, "entrada.txt");
-        var arquivoSaida = Path.Combine(pastaRuntime, "saida.txt");
-        var executavelCobol = Path.Combine(pastaRuntime, "PROJFINAL.exe");
+        var etapas = new List<string>();
+        string? raizParaLog = null;
 
-        Directory.CreateDirectory(pastaRuntime);
-
-        if (!File.Exists(executavelCobol))
+        try
         {
-            return ErroSistema(
-                "Executavel COBOL nao encontrado em: " + executavelCobol
+            var raizProjeto = EncontrarRaizProjeto();
+            raizParaLog = raizProjeto;
+
+            var runtime = Path.Combine(raizProjeto, "runtime");
+
+            Directory.CreateDirectory(runtime);
+
+            var entradaPath = Path.Combine(runtime, "entrada.txt");
+            var saidaPath = Path.Combine(runtime, "saida.txt");
+            var helperEntradaPath = Path.Combine(runtime, "helper-entrada.txt");
+            var helperSaidaPath = Path.Combine(runtime, "helper-saida.txt");
+            var executavelCobol = Path.Combine(runtime, "PROJFINAL.exe");
+
+            RemoverArquivo(saidaPath);
+            RemoverArquivo(helperEntradaPath);
+            RemoverArquivo(helperSaidaPath);
+
+            var operacao = entrada.Operacao?.Trim().ToUpperInvariant() ?? "";
+            var codigo = entrada.Codigo?.Trim() ?? "";
+
+            await CobolMonitor.EscreverAsync(
+                raizProjeto,
+                $"""
+                
+                ============================================================
+                NOVA OPERACAO
+                ============================================================
+                Operacao: {operacao}
+                Codigo: {codigo}
+                Fluxo: Razor Pages -> API -> COBOL -> Helper -> DB2
+                """,
+                cancellationToken
             );
+
+            etapas.Add("API recebeu a requisicao da tela Razor Pages.");
+            etapas.Add("API montou o registro fixo de entrada para o COBOL.");
+
+            var linhaEntrada = MontarLinhaEntrada(entrada);
+
+            await File.WriteAllTextAsync(
+                entradaPath,
+                linhaEntrada + Environment.NewLine,
+                Encoding.ASCII,
+                cancellationToken
+            );
+
+            etapas.Add("API gravou runtime/entrada.txt.");
+
+            await CobolMonitor.EscreverArquivoAsync(
+                raizProjeto,
+                "[1] Entrada enviada para o COBOL",
+                entradaPath,
+                cancellationToken
+            );
+
+            if (!File.Exists(executavelCobol))
+            {
+                await CobolMonitor.EscreverAsync(
+                    raizProjeto,
+                    "[ERRO] Executavel COBOL nao encontrado.",
+                    cancellationToken
+                );
+
+                return new ResultadoCobol
+                {
+                    Sucesso = false,
+                    CodigoRetorno = CodigoResposta.ErroSistema,
+                    Mensagem = "Executavel COBOL nao encontrado.",
+                    EtapasProcessamento = etapas
+                };
+            }
+
+            await CobolMonitor.EscreverAsync(
+                raizProjeto,
+                "[2] Executando programa COBOL...",
+                cancellationToken
+            );
+
+            etapas.Add("API executou runtime/PROJFINAL.exe.");
+
+            var resultadoProcesso = await ExecutarCobolAsync(
+                executavelCobol,
+                raizProjeto,
+                cancellationToken
+            );
+
+            etapas.Add(
+                $"COBOL finalizou com codigo de saida {resultadoProcesso.CodigoSaida}."
+            );
+
+            await CobolMonitor.EscreverAsync(
+                raizProjeto,
+                $"[2] COBOL executado. Codigo de saida: {resultadoProcesso.CodigoSaida}",
+                cancellationToken
+            );
+
+            if (!string.IsNullOrWhiteSpace(resultadoProcesso.SaidaPadrao))
+            {
+                await CobolMonitor.EscreverAsync(
+                    raizProjeto,
+                    "[COBOL STDOUT]",
+                    cancellationToken
+                );
+
+                await CobolMonitor.EscreverAsync(
+                    raizProjeto,
+                    resultadoProcesso.SaidaPadrao,
+                    cancellationToken
+                );
+            }
+
+            if (!string.IsNullOrWhiteSpace(resultadoProcesso.ErroPadrao))
+            {
+                await CobolMonitor.EscreverAsync(
+                    raizProjeto,
+                    "[COBOL STDERR]",
+                    cancellationToken
+                );
+
+                await CobolMonitor.EscreverAsync(
+                    raizProjeto,
+                    resultadoProcesso.ErroPadrao,
+                    cancellationToken
+                );
+            }
+
+            if (File.Exists(helperEntradaPath))
+            {
+                etapas.Add("COBOL gravou runtime/helper-entrada.txt.");
+            }
+
+            if (File.Exists(helperSaidaPath))
+            {
+                etapas.Add("Helper acessou o DB2 e gravou runtime/helper-saida.txt.");
+            }
+
+            await CobolMonitor.EscreverArquivoAsync(
+                raizProjeto,
+                "[3] Entrada enviada pelo COBOL para o Helper",
+                helperEntradaPath,
+                cancellationToken
+            );
+
+            await CobolMonitor.EscreverArquivoAsync(
+                raizProjeto,
+                "[4] Retorno do Helper/DB2",
+                helperSaidaPath,
+                cancellationToken
+            );
+
+            if (!File.Exists(saidaPath))
+            {
+                await CobolMonitor.EscreverAsync(
+                    raizProjeto,
+                    "[ERRO] Arquivo runtime/saida.txt nao foi gerado.",
+                    cancellationToken
+                );
+
+                return new ResultadoCobol
+                {
+                    Sucesso = false,
+                    CodigoRetorno = CodigoResposta.ErroSistema,
+                    Mensagem = "Arquivo de saida do COBOL nao foi gerado.",
+                    EtapasProcessamento = etapas
+                };
+            }
+
+            etapas.Add("COBOL gravou runtime/saida.txt com o retorno final.");
+
+            await CobolMonitor.EscreverArquivoAsync(
+                raizProjeto,
+                "[5] Saida final do COBOL para a API",
+                saidaPath,
+                cancellationToken
+            );
+
+            var saidaCobol = await File.ReadAllTextAsync(
+                saidaPath,
+                Encoding.ASCII,
+                cancellationToken
+            );
+
+            etapas.Add("API interpretou o retorno final do COBOL.");
+
+            var resultado = InterpretarSaida(saidaCobol);
+            resultado.EtapasProcessamento = etapas;
+
+            await CobolMonitor.EscreverAsync(
+                raizProjeto,
+                $"""
+                Resultado interpretado pela API:
+                Codigo: {resultado.CodigoRetorno}
+                Mensagem: {resultado.Mensagem}
+                Sucesso: {resultado.Sucesso}
+
+                FIM DA OPERACAO
+                ============================================================
+                """,
+                cancellationToken
+            );
+
+            return resultado;
         }
-
-        var linhaEntrada = MontarLinhaEntrada(entrada);
-
-        await File.WriteAllTextAsync(
-            arquivoEntrada,
-            linhaEntrada + Environment.NewLine,
-            Encoding.ASCII,
-            cancellationToken
-        );
-
-        if (File.Exists(arquivoSaida))
+        catch
         {
-            File.Delete(arquivoSaida);
-        }
+            if (!string.IsNullOrWhiteSpace(raizParaLog))
+            {
+                await CobolMonitor.EscreverAsync(
+                    raizParaLog,
+                    """
+                    [ERRO] Falha ao executar o fluxo legado.
 
+                    FIM DA OPERACAO COM ERRO
+                    ============================================================
+                    """,
+                    CancellationToken.None
+                );
+            }
+
+            return new ResultadoCobol
+            {
+                Sucesso = false,
+                CodigoRetorno = CodigoResposta.ErroSistema,
+                Mensagem = "Falha ao executar fluxo legado.",
+                EtapasProcessamento = etapas
+            };
+        }
+    }
+
+    private static async Task<ResultadoProcesso> ExecutarCobolAsync(
+        string executavelCobol,
+        string raizProjeto,
+        CancellationToken cancellationToken
+    )
+    {
         var processo = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = executavelCobol,
                 WorkingDirectory = raizProjeto,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
             }
         };
 
-        try
+        processo.Start();
+
+        var saidaPadraoTask = processo.StandardOutput.ReadToEndAsync();
+        var erroPadraoTask = processo.StandardError.ReadToEndAsync();
+
+        await processo.WaitForExitAsync(cancellationToken);
+
+        var saidaPadrao = await saidaPadraoTask;
+        var erroPadrao = await erroPadraoTask;
+
+        return new ResultadoProcesso
         {
-            processo.Start();
-
-            using var limite = new CancellationTokenSource(
-                TimeSpan.FromSeconds(TempoLimiteSegundos)
-            );
-
-            using var combinado = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken,
-                limite.Token
-            );
-
-            await processo.WaitForExitAsync(combinado.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            return ErroSistema("Tempo limite ao executar COBOL.");
-        }
-        catch (Exception erro)
-        {
-            return ErroSistema("Falha ao executar COBOL: " + erro.Message);
-        }
-
-        if (processo.ExitCode != 0)
-        {
-            var erroCobol = await processo.StandardError.ReadToEndAsync(
-                cancellationToken
-            );
-
-            return ErroSistema("COBOL retornou erro: " + erroCobol);
-        }
-
-        if (!File.Exists(arquivoSaida))
-        {
-            return ErroSistema(
-                "Arquivo de saida do COBOL nao encontrado em: " + arquivoSaida
-            );
-        }
-
-        var linhaSaida = await File.ReadAllTextAsync(
-            arquivoSaida,
-            Encoding.ASCII,
-            cancellationToken
-        );
-
-        return InterpretarSaida(linhaSaida);
+            CodigoSaida = processo.ExitCode,
+            SaidaPadrao = saidaPadrao,
+            ErroPadrao = erroPadrao
+        };
     }
 
-    public static string MontarLinhaEntrada(ClienteEntradaCobol entrada)
+    private static string MontarLinhaEntrada(ClienteEntradaCobol entrada)
     {
-        return Ajustar(entrada.Operacao, 10) +
+        return Ajustar(entrada.Operacao?.ToUpperInvariant(), 10) +
                Ajustar(entrada.Codigo, 6) +
                Ajustar(entrada.Nome, 30) +
                Ajustar(entrada.Email, 60) +
-               Ajustar(entrada.Telefone ?? string.Empty, 11);
+               Ajustar(entrada.Telefone, 11);
     }
 
-public static ResultadoCobol InterpretarSaida(string conteudo)
-{
-    var linha = conteudo
-        .Replace("\r", "")
-        .Split('\n')
-        .FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
-
-    if (string.IsNullOrWhiteSpace(linha))
+    private static ResultadoCobol InterpretarSaida(string saida)
     {
-        return ErroSistema("Saida do COBOL vazia.");
-    }
+        var linha = saida.TrimEnd('\r', '\n');
+        var partes = linha.Split('|');
 
-    var partes = linha.Split('|');
-
-    if (partes.Length < 7)
-    {
-        return ErroSistema("Saida do COBOL invalida: " + linha);
-    }
-
-    var codigoRetorno = partes[0].Trim();
-    var mensagem = partes[1].Trim();
-
-    var cliente = new Cliente
-    {
-        Codigo = partes[3].Trim(),
-        Nome = partes[4].Trim(),
-        Email = partes[5].Trim(),
-        Telefone = string.IsNullOrWhiteSpace(partes[6])
-            ? null
-            : partes[6].Trim()
-    };
-
-    return new ResultadoCobol
-    {
-        Sucesso = codigoRetorno == CodigoResposta.Sucesso,
-        CodigoRetorno = codigoRetorno,
-        Mensagem = mensagem,
-        Cliente = cliente
-    };
-}
-
-    private static string EncontrarRaizProjeto()
-    {
-        var pasta = new DirectoryInfo(Directory.GetCurrentDirectory());
-
-        while (pasta is not null)
+        if (partes.Length < 7)
         {
-            var temSolution =
-                File.Exists(Path.Combine(pasta.FullName, "Cooperativa.sln")) ||
-                File.Exists(Path.Combine(pasta.FullName, "Cooperativa.slnx"));
-
-            var temPastaSrc = Directory.Exists(
-                Path.Combine(pasta.FullName, "src")
-            );
-
-            var temPastaRuntime = Directory.Exists(
-                Path.Combine(pasta.FullName, "runtime")
-            );
-
-            if (temSolution && temPastaSrc && temPastaRuntime)
+            return new ResultadoCobol
             {
-                return pasta.FullName;
-            }
-
-            pasta = pasta.Parent;
+                Sucesso = false,
+                CodigoRetorno = CodigoResposta.ErroSistema,
+                Mensagem = "Saida do COBOL em formato invalido."
+            };
         }
 
-        return Directory.GetCurrentDirectory();
-    }
+        var codigoRetorno = partes[0].Trim();
+        var mensagem = partes[1].Trim();
+        var codigoCliente = partes[3].Trim();
 
-    private static ResultadoCobol ErroSistema(string mensagem)
-    {
+        Cliente? cliente = null;
+
+        if (!string.IsNullOrWhiteSpace(codigoCliente))
+        {
+            cliente = new Cliente
+            {
+                Codigo = codigoCliente,
+                Nome = partes[4].Trim(),
+                Email = partes[5].Trim(),
+                Telefone = string.IsNullOrWhiteSpace(partes[6])
+                    ? null
+                    : partes[6].Trim()
+            };
+        }
+
         return new ResultadoCobol
         {
-            Sucesso = false,
-            CodigoRetorno = CodigoErroSistema,
-            Mensagem = mensagem
+            Sucesso = codigoRetorno == CodigoResposta.Sucesso,
+            CodigoRetorno = codigoRetorno,
+            Mensagem = mensagem,
+            Cliente = cliente
         };
     }
 
@@ -204,5 +343,45 @@ public static ResultadoCobol InterpretarSaida(string conteudo)
         }
 
         return texto.PadRight(tamanho);
+    }
+
+    private static void RemoverArquivo(string caminho)
+    {
+        if (File.Exists(caminho))
+        {
+            File.Delete(caminho);
+        }
+    }
+
+    private static string EncontrarRaizProjeto()
+    {
+        var diretorio = new DirectoryInfo(Directory.GetCurrentDirectory());
+
+        while (diretorio is not null)
+        {
+            var temSolution =
+                File.Exists(Path.Combine(diretorio.FullName, "Cooperativa.sln")) ||
+                File.Exists(Path.Combine(diretorio.FullName, "Cooperativa.slnx"));
+
+            var temSrc = Directory.Exists(Path.Combine(diretorio.FullName, "src"));
+
+            if (temSolution && temSrc)
+            {
+                return diretorio.FullName;
+            }
+
+            diretorio = diretorio.Parent;
+        }
+
+        return Directory.GetCurrentDirectory();
+    }
+
+    private sealed class ResultadoProcesso
+    {
+        public int CodigoSaida { get; set; }
+
+        public string SaidaPadrao { get; set; } = string.Empty;
+
+        public string ErroPadrao { get; set; } = string.Empty;
     }
 }

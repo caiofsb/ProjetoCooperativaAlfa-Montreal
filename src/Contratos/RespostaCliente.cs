@@ -9,4 +9,6 @@ public sealed class RespostaCliente
     public string Mensagem { get; set; } = string.Empty;
 
     public Cliente? Cliente { get; set; }
+
+    public List<string> EtapasProcessamento { get; set; } = new();
 }

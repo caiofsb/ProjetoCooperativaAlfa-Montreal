@@ -1,1 +1,1 @@
-0000|Cliente cadastrado.                                         |CADASTRAR |000007|Luiz                          |luiz@corpo.com                                              |31999665531
+0000|Cliente cadastrado.                                         |CADASTRAR |000008|Caio Felipe                   |caiosssf@gmail.com                                          |71993776563

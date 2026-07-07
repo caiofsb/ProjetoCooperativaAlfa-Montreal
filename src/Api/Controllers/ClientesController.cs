@@ -81,7 +81,8 @@ public sealed class ClientesController : ControllerBase
             Sucesso = resultado.Sucesso,
             CodigoRetorno = resultado.CodigoRetorno,
             Mensagem = resultado.Mensagem,
-            Cliente = resultado.Cliente
+            Cliente = resultado.Cliente,
+            EtapasProcessamento = resultado.EtapasProcessamento
         };
 
         if (resposta.CodigoRetorno == CodigoResposta.Sucesso)
